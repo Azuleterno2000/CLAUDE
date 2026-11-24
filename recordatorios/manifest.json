@@ -1,0 +1,10 @@
+{
+  "name": "Listas y Recordatorios",
+  "short_name": "Recordatorios",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f6f9",
+  "theme_color": "#1f4e79",
+  "lang": "es",
+  "icons": [{ "src": "icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

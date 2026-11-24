@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Listas y Recordatorios</title>
+<meta name="theme-color" content="#1f4e79">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icono.svg">
+<style>
+:root{
+  --bg:#f4f6f9; --card:#ffffff; --text:#1c2430; --muted:#5d6b7a; --line:#d9e0e8;
+  --primary:#1f4e79; --primary-text:#fff; --ok:#1e7b46; --warn:#b26a00; --danger:#b3261e;
+  --warn-bg:#fff4e0; --danger-bg:#fdecea; --ok-bg:#e6f4ec;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11161d; --card:#1a222c; --text:#e6edf3; --muted:#9aa7b4; --line:#2c3846;
+    --primary:#4a8fd0; --primary-text:#0b1118; --ok:#4cc38a; --warn:#f0a945; --danger:#ff6b61;
+    --warn-bg:#3a2c12; --danger-bg:#3d1714; --ok-bg:#12301f;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{background:var(--primary);color:var(--primary-text);padding:14px 16px;position:sticky;top:0;z-index:5}
+header h1{margin:0;font-size:1.15rem}
+header .sub{font-size:.8rem;opacity:.85}
+main{max-width:900px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.card h2{margin:0 0 10px;font-size:1.02rem}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row > *{flex:1 1 160px}
+input,select,textarea,button{font:inherit;border-radius:8px}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
+textarea{min-height:60px;resize:vertical}
+button{border:1px solid var(--line);background:var(--card);color:var(--text);padding:8px 12px;cursor:pointer}
+button.primary{background:var(--primary);color:var(--primary-text);border-color:var(--primary)}
+button.ok{background:var(--ok);color:#fff;border-color:var(--ok)}
+button.warn{background:var(--warn);color:#fff;border-color:var(--warn)}
+button.danger{color:var(--danger)}
+button.sm{padding:4px 9px;font-size:.85rem;flex:0 0 auto}
+.flex0{flex:0 0 auto !important}
+.banner{padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:.9rem}
+.banner.warn{background:var(--warn-bg);color:var(--warn)}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tabs button{flex:0 0 auto}
+.tabs button.active{background:var(--primary);color:var(--primary-text);border-color:var(--primary)}
+.badge{display:inline-block;min-width:20px;padding:0 6px;border-radius:10px;background:var(--danger);color:#fff;font-size:.75rem;text-align:center;margin-left:4px}
+.list-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.item{border:1px solid var(--line);border-left:5px solid var(--line);border-radius:8px;padding:10px;margin-top:8px}
+.item.proximo{border-left-color:var(--warn);background:var(--warn-bg)}
+.item.vencido{border-left-color:var(--danger);background:var(--danger-bg)}
+.item.hecho{border-left-color:var(--ok);opacity:.75}
+.item.hecho .txt{text-decoration:line-through}
+.item .txt{font-weight:600;word-break:break-word}
+.item .meta{font-size:.82rem;color:var(--muted);margin:3px 0 6px}
+.item .acts{display:flex;gap:6px;flex-wrap:wrap}
+.estado{font-size:.75rem;font-weight:700;padding:1px 7px;border-radius:10px;border:1px solid currentColor;margin-left:6px}
+.estado.proximo{color:var(--warn)} .estado.vencido{color:var(--danger)} .estado.hecho{color:var(--ok)} .estado.prog{color:var(--muted)}
+details{margin-top:6px;font-size:.82rem;color:var(--muted)}
+details ul{margin:4px 0;padding-left:18px}
+.empty{color:var(--muted);font-style:italic}
+dialog{border:none;border-radius:12px;padding:0;max-width:520px;width:calc(100% - 32px);background:var(--card);color:var(--text)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+dialog .dhead{padding:12px 16px;background:var(--primary);color:var(--primary-text);font-weight:700}
+dialog .dbody{padding:14px 16px}
+dialog .dfoot{padding:0 16px 14px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+label{font-size:.85rem;color:var(--muted);display:block;margin:8px 0 3px}
+.alerta-item{border-bottom:1px solid var(--line);padding:8px 0}
+.alerta-item:last-child{border-bottom:none}
+small.help{color:var(--muted);display:block;margin-top:4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>📋 Listas y Recordatorios</h1>
+  <div class="sub" id="reloj"></div>
+</header>
+<main>
+  <div id="bannerPermiso" class="banner warn" hidden>
+    Las notificaciones del sistema están desactivadas. <button class="sm primary" id="btnPermiso">Activar notificaciones</button>
+  </div>
+
+  <div class="tabs">
+    <button data-tab="pendientes" class="active">⏰ Pendientes <span class="badge" id="badgePend" hidden>0</span></button>
+    <button data-tab="listas">📂 Mis listas</button>
+    <button data-tab="config">⚙️ Configuración</button>
+  </div>
+
+  <!-- PESTAÑA PENDIENTES -->
+  <section id="tab-pendientes">
+    <div class="card">
+      <h2>Tareas que requieren atención</h2>
+      <small class="help">Se muestran las tareas que vencen en la próxima hora y las vencidas no concluidas. Te seguirá recordando hasta que las marques como realizadas o las reprogrames.</small>
+      <div id="pendientesCont"></div>
+    </div>
+    <div class="card">
+      <h2>Próximas programadas</h2>
+      <div id="proximasCont"></div>
+    </div>
+  </section>
+
+  <!-- PESTAÑA LISTAS -->
+  <section id="tab-listas" hidden>
+    <div class="card">
+      <h2>Nueva lista</h2>
+      <div class="row">
+        <input id="nuevaListaNombre" placeholder="Nombre de la lista (ej.: Trámites de la semana)">
+        <button class="primary flex0" id="btnCrearLista">Crear lista</button>
+      </div>
+    </div>
+    <div id="listasCont"></div>
+  </section>
+
+  <!-- PESTAÑA CONFIG -->
+  <section id="tab-config" hidden>
+    <div class="card">
+      <h2>Parámetros de recordatorio</h2>
+      <label>Anticipación del primer aviso (minutos)</label>
+      <input type="number" id="cfgAnticipacion" min="1" value="60">
+      <label>Repetir el recordatorio cada (minutos) mientras no se concluya</label>
+      <input type="number" id="cfgRepetir" min="1" value="10">
+      <label><input type="checkbox" id="cfgSonido" style="width:auto"> Emitir sonido con cada recordatorio</label>
+      <div class="row" style="margin-top:10px">
+        <button class="primary flex0" id="btnGuardarCfg">Guardar</button>
+        <button class="flex0" id="btnProbar">Probar aviso</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Respaldo y calendario</h2>
+      <small class="help">El navegador solo puede avisar mientras la app esté abierta (aunque sea en segundo plano). Para recibir el aviso con el teléfono bloqueado o el navegador cerrado, exporta tus tareas al calendario (.ics): se crean eventos con alarma 1 hora antes.</small>
+      <div class="row" style="margin-top:10px">
+        <button class="flex0" id="btnIcsTodo">📅 Exportar pendientes a calendario (.ics)</button>
+        <button class="flex0" id="btnExportar">💾 Exportar respaldo (.json)</button>
+        <button class="flex0" id="btnImportar">📥 Importar respaldo</button>
+        <input type="file" id="fileImport" accept="application/json" hidden>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Diálogo: agregar / editar tarea -->
+<dialog id="dlgItem">
+  <form method="dialog">
+    <div class="dhead" id="dlgItemTitulo">Agregar tarea</div>
+    <div class="dbody">
+      <label>Descripción de la tarea</label>
+      <textarea id="itemTexto" required placeholder="Ej.: Presentar informe técnico a la Gerencia"></textarea>
+      <div class="row">
+        <div><label>Fecha</label><input type="date" id="itemFecha"></div>
+        <div><label>Hora</label><input type="time" id="itemHora"></div>
+      </div>
+      <small class="help">Si dejas la fecha vacía, la tarea queda en la lista sin recordatorio.</small>
+    </div>
+    <div class="dfoot">
+      <button value="cancel" formnovalidate>Cancelar</button>
+      <button class="primary" id="btnGuardarItem" value="ok">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Diálogo: reprogramar -->
+<dialog id="dlgReprog">
+  <form method="dialog">
+    <div class="dhead">Reprogramar tarea</div>
+    <div class="dbody">
+      <div id="reprogTexto" style="font-weight:600"></div>
+      <div class="row">
+        <div><label>Nueva fecha</label><input type="date" id="reprogFecha" required></div>
+        <div><label>Nueva hora</label><input type="time" id="reprogHora" required></div>
+      </div>
+      <label>Motivo / detalle de la reprogramación</label>
+      <textarea id="reprogMotivo" required placeholder="Ej.: Se espera la firma del Jefe de Área; reprogramado para después de la reunión."></textarea>
+      <small class="help">Quedará registrado en el historial de la tarea.</small>
+    </div>
+    <div class="dfoot">
+      <button value="cancel" formnovalidate>Cancelar</button>
+      <button class="warn" value="ok">Reprogramar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Diálogo: alerta activa -->
+<dialog id="dlgAlerta">
+  <div class="dhead">🔔 Recordatorio</div>
+  <div class="dbody" id="alertaCont"></div>
+  <div class="dfoot"><button id="btnCerrarAlerta">Cerrar (seguirá recordando)</button></div>
+</dialog>
+
+<script>
+"use strict";
+/* ================= Estado y persistencia ================= */
+const CLAVE = "listasRecordatorios.v1";
+const H = 60 * 1000;
+let datos = cargar();
+
+function cargar(){
+  try{
+    const d = JSON.parse(localStorage.getItem(CLAVE));
+    if(d && Array.isArray(d.listas)) return d;
+  }catch(e){}
+  return { listas: [], cfg: { anticipacion: 60, repetir: 10, sonido: true } };
+}
+function guardar(){
+  try{ localStorage.setItem(CLAVE, JSON.stringify(datos)); }
+  catch(e){ alert("No se pudo guardar en este navegador: " + e.message); }
+}
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function fmt(ts){
+  if(!ts) return "Sin fecha";
+  return new Date(ts).toLocaleString("es-PE",{weekday:"short",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+}
+function aInputs(ts){
+  const d = new Date(ts), p = n => String(n).padStart(2,"0");
+  return { f:`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`, h:`${p(d.getHours())}:${p(d.getMinutes())}` };
+}
+function deInputs(f,h){
+  if(!f) return null;
+  const [y,m,d] = f.split("-").map(Number); const [hh,mm] = (h||"09:00").split(":").map(Number);
+  return new Date(y,m-1,d,hh,mm).getTime();
+}
+function restante(ts){
+  const diff = ts - Date.now(), abs = Math.abs(diff);
+  const d = Math.floor(abs/86400000), h = Math.floor(abs%86400000/3600000), m = Math.floor(abs%3600000/60000);
+  const t = (d? d+"d ":"") + (h? h+"h ":"") + m + "min";
+  return diff >= 0 ? "faltan " + t : "vencida hace " + t;
+}
+
+/* Estado de una tarea: hecho | vencido | proximo | prog | sinfecha */
+function estadoDe(it){
+  if(it.hecho) return "hecho";
+  if(!it.vence) return "sinfecha";
+  const ant = (datos.cfg.anticipacion||60) * H;
+  if(Date.now() >= it.vence) return "vencido";
+  if(Date.now() >= it.vence - ant) return "proximo";
+  return "prog";
+}
+const ETQ = {hecho:"Realizada", vencido:"PENDIENTE / VENCIDA", proximo:"Próxima (≤ 1 h)", prog:"Programada", sinfecha:"Sin fecha"};
+
+function todas(){ const r=[]; datos.listas.forEach(l => l.items.forEach(it => r.push({l,it}))); return r; }
+function buscar(lid,iid){ const l=datos.listas.find(x=>x.id===lid); return {l, it: l && l.items.find(x=>x.id===iid)}; }
+function hist(it, texto){ (it.historial ||= []).push({ fecha: Date.now(), texto }); }
+
+/* ================= Render ================= */
+function htmlItem(l,it,mostrarLista){
+  const e = estadoDe(it);
+  const h = (it.historial||[]).slice().reverse().map(x=>`<li>${esc(fmt(x.fecha))}: ${esc(x.texto)}</li>`).join("");
+  return `<div class="item ${e}">
+    <div class="txt">${esc(it.texto)}<span class="estado ${e==="sinfecha"?"prog":e}">${ETQ[e]}</span></div>
+    <div class="meta">${mostrarLista?`📂 ${esc(l.nombre)} · `:""}🕒 ${esc(fmt(it.vence))}${it.vence&&!it.hecho?` · ${restante(it.vence)}`:""}${it.reprogramaciones?` · reprogramada ${it.reprogramaciones} vez(es)`:""}${it.hecho?` · concluida ${esc(fmt(it.hechoEn))}`:""}</div>
+    <div class="acts">
+      ${it.hecho
+        ? `<button class="sm" data-a="reabrir" data-l="${l.id}" data-i="${it.id}">↩ Reabrir</button>`
+        : `<button class="sm ok" data-a="hecho" data-l="${l.id}" data-i="${it.id}">✔ Realizado</button>
+           <button class="sm warn" data-a="reprog" data-l="${l.id}" data-i="${it.id}">📅 Reprogramar</button>`}
+      <button class="sm" data-a="editar" data-l="${l.id}" data-i="${it.id}">✏ Editar</button>
+      ${it.vence&&!it.hecho?`<button class="sm" data-a="ics" data-l="${l.id}" data-i="${it.id}">➕ Calendario</button>`:""}
+      <button class="sm danger" data-a="borrar" data-l="${l.id}" data-i="${it.id}">🗑</button>
+    </div>
+    ${h?`<details><summary>Historial</summary><ul>${h}</ul></details>`:""}
+  </div>`;
+}
+
+function render(){
+  // Pendientes
+  const all = todas();
+  const pend = all.filter(x => ["vencido","proximo"].includes(estadoDe(x.it))).sort((a,b)=>a.it.vence-b.it.vence);
+  document.getElementById("pendientesCont").innerHTML = pend.length
+    ? pend.map(x=>htmlItem(x.l,x.it,true)).join("") : `<p class="empty">No tienes tareas pendientes en este momento. ✅</p>`;
+  const prox = all.filter(x => estadoDe(x.it)==="prog").sort((a,b)=>a.it.vence-b.it.vence).slice(0,15);
+  document.getElementById("proximasCont").innerHTML = prox.length
+    ? prox.map(x=>htmlItem(x.l,x.it,true)).join("") : `<p class="empty">No hay tareas programadas a futuro.</p>`;
+  const b = document.getElementById("badgePend");
+  b.hidden = !pend.length; b.textContent = pend.length;
+
+  // Listas
+  document.getElementById("listasCont").innerHTML = datos.listas.length ? datos.listas.map(l=>{
+    const orden = l.items.slice().sort((a,b)=>(a.hecho-b.hecho)||((a.vence||9e15)-(b.vence||9e15)));
+    const hechas = l.items.filter(i=>i.hecho).length;
+    return `<div class="card">
+      <div class="list-head">
+        <h2 style="margin:0">📂 ${esc(l.nombre)} <small style="color:var(--muted);font-weight:400">(${hechas}/${l.items.length} realizadas)</small></h2>
+        <div class="row" style="flex:0 0 auto">
+          <button class="sm primary" data-a="nuevo" data-l="${l.id}">+ Tarea</button>
+          <button class="sm" data-a="renombrar" data-l="${l.id}">Renombrar</button>
+          <button class="sm danger" data-a="borrarLista" data-l="${l.id}">Eliminar lista</button>
+        </div>
+      </div>
+      ${orden.length ? orden.map(it=>htmlItem(l,it,false)).join("") : `<p class="empty">Lista vacía. Agrega tareas con “+ Tarea”.</p>`}
+    </div>`;
+  }).join("") : `<p class="empty">Aún no has creado listas.</p>`;
+
+  document.getElementById("bannerPermiso").hidden = !("Notification" in window) || Notification.permission === "granted";
+}
+
+/* ================= Acciones ================= */
+document.getElementById("btnCrearLista").onclick = () => {
+  const inp = document.getElementById("nuevaListaNombre"), n = inp.value.trim();
+  if(!n) return inp.focus();
+  datos.listas.push({id:uid(), nombre:n, items:[]}); inp.value=""; guardar(); render();
+};
+document.getElementById("nuevaListaNombre").addEventListener("keydown", e => { if(e.key==="Enter") document.getElementById("btnCrearLista").click(); });
+
+let editando = null; // {lid, iid|null}
+function abrirItem(lid, iid){
+  editando = {lid, iid};
+  const {it} = iid ? buscar(lid,iid) : {};
+  document.getElementById("dlgItemTitulo").textContent = it ? "Editar tarea" : "Agregar tarea";
+  document.getElementById("itemTexto").value = it ? it.texto : "";
+  const v = it && it.vence ? aInputs(it.vence) : {f:"",h:""};
+  document.getElementById("itemFecha").value = v.f; document.getElementById("itemHora").value = v.h;
+  document.getElementById("dlgItem").showModal();
+}
+document.getElementById("dlgItem").addEventListener("close", () => {
+  const dlg = document.getElementById("dlgItem");
+  if(dlg.returnValue !== "ok" || !editando) return;
+  const texto = document.getElementById("itemTexto").value.trim(); if(!texto) return;
+  const vence = deInputs(document.getElementById("itemFecha").value, document.getElementById("itemHora").value);
+  const {l} = buscar(editando.lid);
+  if(editando.iid){
+    const {it} = buscar(editando.lid, editando.iid);
+    if(it.vence !== vence){ hist(it, `Fecha modificada: ${fmt(it.vence)} → ${fmt(vence)}`); it.ultimoAviso = 0; it.marcadaPendiente = false; }
+    it.texto = texto; it.vence = vence;
+  } else {
+    const it = {id:uid(), texto, vence, hecho:false, creado:Date.now(), ultimoAviso:0, reprogramaciones:0, historial:[]};
+    hist(it, "Tarea registrada" + (vence ? ` para ${fmt(vence)}` : ""));
+    l.items.push(it);
+  }
+  guardar(); render(); revisar();
+});
+
+let reprogramando = null;
+function abrirReprog(lid, iid){
+  reprogramando = {lid, iid};
+  const {it} = buscar(lid,iid);
+  document.getElementById("reprogTexto").textContent = it.texto;
+  const base = aInputs(Math.max(Date.now(), it.vence||0) + 24*60*H); // sugerencia: +1 día
+  document.getElementById("reprogFecha").value = base.f; document.getElementById("reprogHora").value = base.h;
+  document.getElementById("reprogMotivo").value = "";
+  document.getElementById("dlgReprog").showModal();
+}
+document.getElementById("dlgReprog").addEventListener("close", () => {
+  if(document.getElementById("dlgReprog").returnValue !== "ok" || !reprogramando) return;
+  const {it} = buscar(reprogramando.lid, reprogramando.iid);
+  const nv = deInputs(document.getElementById("reprogFecha").value, document.getElementById("reprogHora").value);
+  const motivo = document.getElementById("reprogMotivo").value.trim();
+  if(!nv || !motivo) return;
+  if(nv <= Date.now() && !confirm("La nueva fecha/hora ya pasó. ¿Reprogramar de todos modos?")) return;
+  hist(it, `Reprogramada de ${fmt(it.vence)} a ${fmt(nv)} — Motivo: ${motivo}`);
+  it.vence = nv; it.ultimoAviso = 0; it.marcadaPendiente = false; it.reprogramaciones = (it.reprogramaciones||0) + 1;
+  guardar(); render(); revisar();
+});
+
+document.body.addEventListener("click", e => {
+  const b = e.target.closest("button[data-a]"); if(!b) return;
+  const {a, l:lid, i:iid} = b.dataset;
+  const {l, it} = buscar(lid, iid);
+  switch(a){
+    case "nuevo": abrirItem(lid, null); break;
+    case "editar": abrirItem(lid, iid); break;
+    case "reprog": abrirReprog(lid, iid); document.getElementById("dlgAlerta").close(); break;
+    case "hecho": it.hecho = true; it.hechoEn = Date.now(); hist(it, "Marcada como REALIZADA"); break;
+    case "reabrir": it.hecho = false; it.ultimoAviso = 0; it.marcadaPendiente = false; hist(it, "Reabierta"); break;
+    case "ics": descargarIcs([it], it.texto.slice(0,30)); break;
+    case "borrar": if(confirm("¿Eliminar la tarea?\n" + it.texto)) l.items = l.items.filter(x=>x.id!==iid); break;
+    case "renombrar": { const n = prompt("Nuevo nombre de la lista:", l.nombre); if(n && n.trim()) l.nombre = n.trim(); break; }
+    case "borrarLista": if(confirm(`¿Eliminar la lista "${l.nombre}" y sus ${l.items.length} tareas?`)) datos.listas = datos.listas.filter(x=>x.id!==lid); break;
+  }
+  guardar(); render();
+  if(a === "hecho" && document.getElementById("dlgAlerta").open) mostrarAlerta(itemsEnAlerta());
+});
+
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("active", x===b));
+  ["pendientes","listas","config"].forEach(t => document.getElementById("tab-"+t).hidden = t !== b.dataset.tab);
+});
+
+/* ================= Configuración y respaldo ================= */
+function pintarCfg(){
+  document.getElementById("cfgAnticipacion").value = datos.cfg.anticipacion;
+  document.getElementById("cfgRepetir").value = datos.cfg.repetir;
+  document.getElementById("cfgSonido").checked = !!datos.cfg.sonido;
+}
+document.getElementById("btnGuardarCfg").onclick = () => {
+  datos.cfg.anticipacion = Math.max(1, +document.getElementById("cfgAnticipacion").value || 60);
+  datos.cfg.repetir = Math.max(1, +document.getElementById("cfgRepetir").value || 10);
+  datos.cfg.sonido = document.getElementById("cfgSonido").checked;
+  guardar(); render(); alert("Configuración guardada.");
+};
+document.getElementById("btnProbar").onclick = () => { pitido(); notificar("Prueba de recordatorio", "Así se verán tus avisos."); };
+
+function descargar(nombre, contenido, tipo){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([contenido], {type:tipo})); a.download = nombre;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();}, 1000);
+}
+document.getElementById("btnExportar").onclick = () =>
+  descargar(`respaldo-recordatorios-${aInputs(Date.now()).f}.json`, JSON.stringify(datos,null,2), "application/json");
+document.getElementById("btnImportar").onclick = () => document.getElementById("fileImport").click();
+document.getElementById("fileImport").onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    const d = JSON.parse(await f.text());
+    if(!Array.isArray(d.listas)) throw new Error("formato no válido");
+    if(confirm("Esto reemplazará los datos actuales. ¿Continuar?")){ datos = d; datos.cfg ||= {anticipacion:60,repetir:10,sonido:true}; guardar(); pintarCfg(); render(); }
+  }catch(err){ alert("No se pudo importar: " + err.message); }
+  e.target.value = "";
+};
+
+/* ---- Exportación iCalendar (RFC 5545) con alarma previa ---- */
+function icsFecha(ts){ return new Date(ts).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,""); }
+function icsTxt(s){ return String(s).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\n/g,"\\n"); }
+function descargarIcs(items, nombre){
+  const ant = datos.cfg.anticipacion || 60;
+  const ev = items.filter(it=>it.vence && !it.hecho).map(it => [
+    "BEGIN:VEVENT", `UID:${it.id}@listas-recordatorios`, `DTSTAMP:${icsFecha(Date.now())}`,
+    `DTSTART:${icsFecha(it.vence)}`, `DTEND:${icsFecha(it.vence + 30*H)}`,
+    `SUMMARY:${icsTxt(it.texto)}`, `DESCRIPTION:${icsTxt("Recordatorio generado por Listas y Recordatorios")}`,
+    "BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${icsTxt(it.texto)}`, `TRIGGER:-PT${ant}M`, "END:VALARM",
+    "BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${icsTxt(it.texto)}`, "TRIGGER:PT0M", "END:VALARM",
+    "END:VEVENT"].join("\r\n"));
+  if(!ev.length) return alert("No hay tareas con fecha pendientes para exportar.");
+  const cal = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Listas y Recordatorios//ES","CALSCALE:GREGORIAN", ...ev, "END:VCALENDAR"].join("\r\n");
+  descargar(`${nombre.replace(/[^\w\-]+/g,"_") || "tareas"}.ics`, cal, "text/calendar");
+}
+document.getElementById("btnIcsTodo").onclick = () => descargarIcs(todas().map(x=>x.it), "pendientes");
+
+/* ================= Motor de recordatorios ================= */
+let swReg = null;
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+  navigator.serviceWorker.register("sw.js").then(r => swReg = r).catch(()=>{});
+}
+document.getElementById("btnPermiso").onclick = async () => {
+  if(!("Notification" in window)) return alert("Este navegador no admite notificaciones.");
+  await Notification.requestPermission(); render();
+};
+
+function notificar(titulo, cuerpo){
+  if(!("Notification" in window) || Notification.permission !== "granted") return;
+  const op = { body: cuerpo, tag: "recordatorio", renotify: true, requireInteraction: true };
+  if(swReg && swReg.showNotification) swReg.showNotification(titulo, op).catch(()=>{});
+  else try{ const n = new Notification(titulo, op); n.onclick = () => { window.focus(); n.close(); }; }catch(e){}
+}
+let actx = null;
+function pitido(){
+  if(!datos.cfg.sonido) return;
+  try{
+    actx ||= new (window.AudioContext || window.webkitAudioContext)();
+    [0, .35, .7].forEach(t => {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.frequency.value = 880; o.connect(g); g.connect(actx.destination);
+      g.gain.setValueAtTime(.25, actx.currentTime + t); g.gain.exponentialRampToValueAtTime(.001, actx.currentTime + t + .3);
+      o.start(actx.currentTime + t); o.stop(actx.currentTime + t + .3);
+    });
+  }catch(e){}
+}
+function itemsEnAlerta(){ return todas().filter(x => ["vencido","proximo"].includes(estadoDe(x.it))); }
+
+function mostrarAlerta(lista){
+  const dlg = document.getElementById("dlgAlerta");
+  if(!lista.length){ if(dlg.open) dlg.close(); return; }
+  document.getElementById("alertaCont").innerHTML = lista.map(({l,it}) => `<div class="alerta-item">
+      <div style="font-weight:600">${esc(it.texto)}</div>
+      <div class="meta" style="font-size:.82rem;color:var(--muted)">📂 ${esc(l.nombre)} · ${esc(fmt(it.vence))} · <b>${restante(it.vence)}</b></div>
+      <div class="acts" style="display:flex;gap:6px;margin-top:4px">
+        <button class="sm ok" data-a="hecho" data-l="${l.id}" data-i="${it.id}">✔ Realizado</button>
+        <button class="sm warn" data-a="reprog" data-l="${l.id}" data-i="${it.id}">📅 Reprogramar</button>
+      </div></div>`).join("");
+  if(!dlg.open && !document.querySelector("dialog[open]")) dlg.showModal();
+}
+document.getElementById("btnCerrarAlerta").onclick = () => document.getElementById("dlgAlerta").close();
+
+let parpadeo = null;
+function tituloAlerta(n){
+  clearInterval(parpadeo);
+  if(!n){ document.title = "Listas y Recordatorios"; return; }
+  let on = false;
+  parpadeo = setInterval(() => { document.title = (on = !on) ? `🔔 (${n}) Pendiente(s)` : "Listas y Recordatorios"; }, 1200);
+}
+
+/* Revisa cada 30 s: avisa al entrar en la ventana de anticipación y
+   repite cada N minutos mientras la tarea no se marque realizada ni se reprograme. */
+function revisar(){
+  const ahora = Date.now(), rep = (datos.cfg.repetir||10) * H;
+  const activas = itemsEnAlerta();
+  const toca = activas.filter(({it}) => !it.ultimoAviso || ahora - it.ultimoAviso >= rep);
+  if(toca.length){
+    toca.forEach(({l,it}) => {
+      const e = estadoDe(it);
+      notificar(e === "vencido" ? "⚠️ Tarea PENDIENTE" : "⏰ Tarea en menos de 1 hora",
+                `${it.texto}\n${l.nombre} · ${fmt(it.vence)} (${restante(it.vence)})`);
+      if(e === "vencido" && !it.marcadaPendiente){ it.marcadaPendiente = true; hist(it, "Registrada automáticamente como PENDIENTE (no concluida a la hora programada)"); }
+      it.ultimoAviso = ahora;
+    });
+    pitido(); guardar(); mostrarAlerta(activas);
+  }
+  tituloAlerta(activas.length);
+  render();
+}
+setInterval(() => {
+  document.getElementById("reloj").textContent = new Date().toLocaleString("es-PE",{dateStyle:"full",timeStyle:"short"});
+}, 1000);
+setInterval(revisar, 30000);
+document.addEventListener("visibilitychange", () => { if(!document.hidden) revisar(); });
+
+pintarCfg(); render(); revisar();
+</script>
+</body>
+</html>
