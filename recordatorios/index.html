@@ -69,6 +69,9 @@ label{font-size:.85rem;color:var(--muted);display:block;margin:8px 0 3px}
 .alerta-item{border-bottom:1px solid var(--line);padding:8px 0}
 .alerta-item:last-child{border-bottom:none}
 small.help{color:var(--muted);display:block;margin-top:4px}
+.vozestado{font-size:.88rem;color:var(--muted);flex:1 1 220px}
+#btnMic.escuchando{background:var(--danger);border-color:var(--danger);animation:pulso 1.2s infinite}
+@keyframes pulso{50%{opacity:.6}}
 </style>
 </head>
 <body>
@@ -89,6 +92,21 @@ small.help{color:var(--muted);display:block;margin-top:4px}
 
   <!-- PESTAÑA PENDIENTES -->
   <section id="tab-pendientes">
+    <div class="card voz">
+      <div class="row">
+        <button class="primary flex0" id="btnMic">🎤 Hablar</button>
+        <div id="vozEstado" class="vozestado">Pulsa «Hablar» o di «<span id="lblActivacion">hola agenda</span>» si activaste la escucha continua.</div>
+      </div>
+      <details><summary>¿Qué puedo decir?</summary><ul>
+        <li><b>«Nueva lista Trámites»</b> → luego dicta cada tarea: «presentar informe mañana a las 10», «firmar oficio el viernes a las 3 de la tarde»… y al final «terminar».</li>
+        <li><b>«Agregar a la lista Trámites»</b> → sigue dictando en una lista existente.</li>
+        <li><b>«Recuérdame pagar el agua el 28 de noviembre a las 9»</b> → tarea suelta en la lista General.</li>
+        <li><b>«¿Qué tengo pendiente?»</b> · <b>«Mis listas»</b></li>
+        <li><b>«Ya hice el informe técnico»</b> → la marca como realizada.</li>
+        <li><b>«Reprogramar informe para el lunes a las 11 porque falta la firma del jefe»</b></li>
+        <li>Fechas que entiende: hoy, mañana, pasado mañana, el lunes…, el 28 de noviembre, en 2 horas, en media hora, a las 10 y media, de la tarde/noche, mediodía. «A las 1 a 7» sin indicar se toma como tarde.</li>
+      </ul></details>
+    </div>
     <div class="card">
       <h2>Tareas que requieren atención</h2>
       <small class="help">Se muestran las tareas que vencen en la próxima hora y las vencidas no concluidas. Te seguirá recordando hasta que las marques como realizadas o las reprogrames.</small>
@@ -114,6 +132,20 @@ small.help{color:var(--muted);display:block;margin-top:4px}
 
   <!-- PESTAÑA CONFIG -->
   <section id="tab-config" hidden>
+    <div class="card">
+      <h2>🎙️ Voz</h2>
+      <label>¿Cómo quieres que te llame?</label>
+      <input id="cfgNombre" placeholder="Ej.: Luis">
+      <label>Palabra de activación (para la escucha continua)</label>
+      <input id="cfgActivacion" placeholder="hola agenda">
+      <label><input type="checkbox" id="cfgHablar" style="width:auto"> Leer los recordatorios en voz alta</label>
+      <label><input type="checkbox" id="cfgEscucha" style="width:auto"> Escucha continua: atender la palabra de activación mientras la app esté abierta</label>
+      <small class="help">Requiere Google Chrome o Microsoft Edge, permiso de micrófono y conexión a internet (el reconocimiento lo hace el servicio de voz del navegador). En el celular, la escucha se detiene al bloquear la pantalla.</small>
+      <div class="row" style="margin-top:10px">
+        <button class="primary flex0" id="btnGuardarVoz">Guardar</button>
+        <button class="flex0" id="btnProbarVoz">🔊 Probar voz</button>
+      </div>
+    </div>
     <div class="card">
       <h2>Parámetros de recordatorio</h2>
       <label>Anticipación del primer aviso (minutos)</label>
@@ -495,6 +527,7 @@ function revisar(){
       it.ultimoAviso = ahora;
     });
     pitido(); guardar(); mostrarAlerta(activas);
+    if(typeof avisarPorVoz === "function") avisarPorVoz(toca);
   }
   tituloAlerta(activas.length);
   render();
@@ -505,7 +538,9 @@ setInterval(() => {
 setInterval(revisar, 30000);
 document.addEventListener("visibilitychange", () => { if(!document.hidden) revisar(); });
 
-pintarCfg(); render(); revisar();
+pintarCfg(); render();
+window.addEventListener("load", revisar);
 </script>
+<script src="voz.js"></script>
 </body>
 </html>
